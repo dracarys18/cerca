@@ -1,10 +1,11 @@
 const std = @import("std");
 const testing = std.testing;
+const ll = @import("././ll.zig");
 
-export fn add(a: i32, b: i32) i32 {
-    return a + b;
-}
+test "linkedlist_test" {
+    var queue = ll.DoubleLinkedList(u64).empty();
+    const node = try ll.Node(u64).new(1, testing.allocator);
+    queue.push_front(node);
 
-test "basic add functionality" {
-    try testing.expect(add(3, 7) == 10);
+    testing.expect(if (queue.front) |front| return front.data == 1);
 }

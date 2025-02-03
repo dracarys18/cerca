@@ -1,5 +1,6 @@
 const std = @import("std");
 
+/// A single node of a queue
 pub fn Node(comptime V: type) type {
     return struct {
         const Self = @This();
@@ -7,15 +8,28 @@ pub fn Node(comptime V: type) type {
         data: V,
         prev: ?*Self,
         next: ?*Self,
+        allocator: std.mem.Allocator,
 
-        pub fn new(value: V, allocator: std.mem.Allocator) !*Self {
+        pub fn init(value: V, allocator: std.mem.Allocator) !*Self {
             var node = try allocator.create(Self);
 
             node.prev = null;
             node.next = null;
             node.data = value;
+            node.allocator = allocator;
 
             return node;
+        }
+
+        pub fn deinit(self: *Self) void {
+            if (self.prev) |prev| {
+                self.allocator.destroy(prev);
+            }
+            if (self.next) |next| {
+                self.allocator.destroy(next);
+            }
+
+            self.allocator.destroy(&self.data);
         }
     };
 }
@@ -123,108 +137,23 @@ pub fn DoubleLinkedList(comptime V: type) type {
             self.size -= 1;
         }
 
+        pub fn clear(self: *Self) void {
+            var front = self.front;
+            while (front) |node| {
+                node.deinit();
+                front = node.next;
+            }
+        }
+
         pub fn print_queue(self: *Self) void {
             var front = self.front;
 
-            std.debug.print("Queue \t", .{});
             while (front) |node| {
                 std.debug.print("{}", .{node.data});
                 front = node.next;
             }
 
             std.debug.print("\n", .{});
-        }
-    };
-}
-
-pub fn CacheBuilder(comptime K: type, comptime V: type) type {
-    return struct {
-        ttl: ?u64,
-        limit: ?usize,
-
-        const Self = @This();
-        pub fn new() Self {
-            return Self{ .ttl = null, .limit = null };
-        }
-
-        pub fn with_ttl(self: *Self, ttl: u64) *Self {
-            self.ttl = ttl;
-            return self;
-        }
-
-        pub fn with_limit(self: *Self, limit: usize) *Self {
-            self.limit = limit;
-            return self;
-        }
-
-        pub fn build(self: *Self, allocator: std.mem.Allocator) Cache(K, V) {
-            return Cache(K, V).initOptions(allocator, self.ttl orelse 100000, self.limit orelse 2);
-        }
-    };
-}
-
-pub fn Cache(comptime K: type, comptime V: type) type {
-    return struct {
-        inner: std.AutoHashMap(K, Node(V)),
-        expiry: DoubleLinkedList(K),
-        allocator: std.mem.Allocator,
-        ttl: u64,
-        limit: usize,
-
-        const Self = @This();
-
-        pub fn init(allocator: std.mem.Allocator) Self {
-            return Self{ .inner = std.AutoHashMap(K, Node(V)).init(allocator), .expiry = DoubleLinkedList(K).empty(), .allocator = allocator, .ttl = null, .limit = 2 };
-        }
-
-        pub fn initOptions(allocator: std.mem.Allocator, ttl: u64, limit: usize) Self {
-            return Self{ .inner = std.AutoHashMap(K, Node(V)).init(allocator), .expiry = DoubleLinkedList(K).empty(), .allocator = allocator, .ttl = ttl, .limit = limit };
-        }
-
-        pub fn deinit(self: *Self) void {
-            self.inner.deinit();
-        }
-
-        pub fn insert(self: *Self, key: K, value: V) !void {
-            const node = try Node(V).new(value, self.allocator);
-            try self.inner.put(key, node.*);
-            self.expiry.push_back(node);
-
-            std.debug.print("Size: {}\n Limit: {} \n", .{ self.expiry.size, self.limit });
-            if (self.expiry.size >= self.limit) {
-                self.evict();
-            }
-
-            self.expiry.print_queue();
-        }
-
-        pub fn evict(self: *Self) void {
-            if (self.expiry.front) |front| {
-                std.debug.print("Evicting {}", .{front.data});
-                self.expiry.remove(front);
-            }
-        }
-
-        pub fn get(self: *Self, key: K) ?V {
-            const node = self.inner.getPtr(key);
-
-            if (node) |nonull_node| {
-                self.expiry.moveToBack(nonull_node);
-                return nonull_node.data;
-            } else {
-                return null;
-            }
-        }
-
-        pub fn remove(self: *Self, key: K) bool {
-            const value = self.inner.get(key);
-
-            if (value) |node| {
-                self.expiry.remove(&node);
-                return self.inner.remove(key);
-            } else {
-                return false;
-            }
         }
     };
 }

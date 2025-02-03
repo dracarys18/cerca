@@ -1,5 +1,6 @@
 const std = @import("std");
-const ll = @import("././ll.zig");
+const ll = @import("./cache.zig");
+const EvictionPolicy = @import("./ep.zig").EvictionPolicy;
 
 pub fn main() !void {
     // var ll = DoubleLinkedList(u64).empty();
@@ -21,8 +22,8 @@ pub fn main() !void {
     var arena = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = arena.allocator();
 
-    var builder = ll.CacheBuilder(u64, u64).new();
-    var cache = builder.with_limit(10).build(allocator);
+    var cache = ll.CacheBuilder(u64, u64).new(EvictionPolicy(u64).LeastRecentlyUsed).with_limit(10).build(allocator);
+    defer cache.deinit();
 
     _ = try cache.insert(1, 1);
     _ = try cache.insert(2, 2);
