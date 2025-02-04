@@ -1,20 +1,22 @@
 const std = @import("std");
 
 /// A single node of a queue
-pub fn Node(comptime V: type) type {
+pub fn Node(comptime K: type, comptime V: type) type {
     return struct {
         const Self = @This();
 
+        key: K,
         data: V,
         prev: ?*Self,
         next: ?*Self,
         allocator: std.mem.Allocator,
 
-        pub fn init(value: V, allocator: std.mem.Allocator) !*Self {
+        pub fn init(key: K, value: V, allocator: std.mem.Allocator) !*Self {
             var node = try allocator.create(Self);
 
             node.prev = null;
             node.next = null;
+            node.key = key;
             node.data = value;
             node.allocator = allocator;
 
@@ -22,24 +24,17 @@ pub fn Node(comptime V: type) type {
         }
 
         pub fn deinit(self: *Self) void {
-            if (self.prev) |prev| {
-                self.allocator.destroy(prev);
-            }
-            if (self.next) |next| {
-                self.allocator.destroy(next);
-            }
-
-            self.allocator.destroy(&self.data);
+            self.allocator.destroy(self);
         }
     };
 }
 
-pub fn DoubleLinkedList(comptime V: type) type {
+pub fn DoubleLinkedList(comptime K: type, comptime V: type) type {
     return struct {
         const Self = @This();
 
-        front: ?*Node(V),
-        back: ?*Node(V),
+        front: ?*Node(K, V),
+        back: ?*Node(K, V),
         size: usize,
 
         pub fn empty() Self {
@@ -50,7 +45,7 @@ pub fn DoubleLinkedList(comptime V: type) type {
             };
         }
 
-        pub fn push_front(self: *Self, value: *Node(V)) void {
+        pub fn push_front(self: *Self, value: *Node(K, V)) void {
             if (self.front == value) {
                 return;
             }
@@ -69,10 +64,11 @@ pub fn DoubleLinkedList(comptime V: type) type {
             self.size += 1;
         }
 
-        pub fn push_back(self: *Self, value: *Node(V)) void {
+        pub fn push_back(self: *Self, value: *Node(K, V)) bool {
             if (self.back == value) {
-                return;
+                return false;
             }
+
             if (self.back == null) {
                 self.front = value;
                 self.back = value;
@@ -85,9 +81,10 @@ pub fn DoubleLinkedList(comptime V: type) type {
             }
 
             self.size += 1;
+            return true;
         }
 
-        pub fn moveToBack(self: *Self, node: *Node(V)) void {
+        pub fn moveToBack(self: *Self, node: *Node(K, V)) void {
             // If the next is null node is already at the back
             if (node.next == null) {
                 return;
@@ -118,7 +115,7 @@ pub fn DoubleLinkedList(comptime V: type) type {
             self.back = node;
         }
 
-        pub fn remove(self: *Self, node: *Node(V)) void {
+        pub fn remove(self: *Self, node: *Node(K, V)) void {
             // If the node was intermediate of the queue
             if (node.prev) |prev| {
                 prev.next = node.next;
@@ -129,20 +126,24 @@ pub fn DoubleLinkedList(comptime V: type) type {
             if (node.next) |next| {
                 next.prev = node.prev;
             } else {
-                self.back = node.next;
+                self.back = node.prev;
             }
 
-            node.prev = null;
-            node.next = null;
+            node.deinit();
             self.size -= 1;
         }
 
         pub fn clear(self: *Self) void {
             var front = self.front;
             while (front) |node| {
+                const next = node.next;
                 node.deinit();
-                front = node.next;
+                front = next;
             }
+            self.front = null;
+            self.back = null;
+            self.size = 0;
+            self.* = undefined;
         }
 
         pub fn print_queue(self: *Self) void {

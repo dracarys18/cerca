@@ -11,12 +11,12 @@ pub fn CacheBuilder(comptime K: type, comptime V: type) type {
         limit: usize,
 
         /// Sets the EvictionPolicy of the Cache
-        eviction: EvictionPolicy(V),
+        eviction: EvictionPolicy(K, V),
 
         const Self = @This();
 
         /// Default Constructor for the CacheBuilder. Note that it's mandatory to choose eviction policy at this step
-        pub fn new(eviction: EvictionPolicy(V)) Self {
+        pub fn new(eviction: EvictionPolicy(K, V)) Self {
             return Self{ .limit = defaults.DEFAULT_MAX_CAPACITY, .eviction = eviction };
         }
 
@@ -39,40 +39,46 @@ pub fn CacheBuilder(comptime K: type, comptime V: type) type {
 /// - SIEVE (TODO)
 pub fn Cache(comptime K: type, comptime V: type) type {
     return struct {
-        inner: std.AutoHashMap(K, Node(V)),
-        expiry: DoubleLinkedList(K),
+        inner: std.AutoHashMap(K, *Node(K, V)),
+        expiry: DoubleLinkedList(K, V),
         allocator: std.mem.Allocator,
-        eviction: EvictionPolicy(V),
+        eviction: EvictionPolicy(K, V),
         limit: usize,
 
         const Self = @This();
 
         fn initOptions(allocator: std.mem.Allocator, builder: CacheBuilder(K, V)) Self {
-            return Self{ .inner = std.AutoHashMap(K, Node(V)).init(allocator), .expiry = DoubleLinkedList(K).empty(), .allocator = allocator, .limit = builder.limit, .eviction = builder.eviction };
+            return Self{ .inner = std.AutoHashMap(K, *Node(K, V)).init(allocator), .expiry = DoubleLinkedList(K, V).empty(), .allocator = allocator, .limit = builder.limit, .eviction = builder.eviction };
         }
 
         /// Releases all the memory allocated by `Cache`
         pub fn deinit(self: *Self) void {
-            self.inner.deinit();
             self.expiry.clear();
+            self.inner.deinit();
+
             self.* = undefined;
         }
 
         /// Inserts an element into the the Cache
         pub fn insert(self: *Self, key: K, value: V) !bool {
-            const node = self.inner.getPtr(key);
-            const new_node = try self.eviction.insert(self.allocator, node, &self.expiry, value);
+            const node = self.inner.get(key);
+            const new_node = try self.eviction.insert(self.allocator, node, &self.expiry, key, value);
             var is_inserted = false;
 
+            errdefer if (new_node) |nonull_node| {
+                nonull_node.deinit();
+            };
+
             if (new_node) |nonull_node| {
-                try self.inner.put(key, nonull_node.*);
-                is_inserted = false;
-            } else {
+                try self.inner.put(key, nonull_node);
                 is_inserted = true;
             }
 
-            if (self.expiry.size >= self.limit) {
-                self.eviction.evict(&self.expiry);
+            if (self.expiry.size > self.limit) {
+                const to_remove = self.eviction.evict(&self.expiry);
+                if (to_remove) |key_to_remove| {
+                    _ = self.inner.remove(key_to_remove);
+                }
             }
 
             return is_inserted;
@@ -80,7 +86,7 @@ pub fn Cache(comptime K: type, comptime V: type) type {
 
         /// Get an element from the cache
         pub fn get(self: *Self, key: K) ?V {
-            const node = self.inner.getPtr(key);
+            const node = self.inner.get(key);
             return self.eviction.get(node, &self.expiry);
         }
 
@@ -89,7 +95,7 @@ pub fn Cache(comptime K: type, comptime V: type) type {
             const value = self.inner.get(key);
 
             if (value) |node| {
-                self.expiry.remove(&node);
+                self.expiry.remove(node);
                 return self.inner.remove(key);
             } else {
                 return false;
