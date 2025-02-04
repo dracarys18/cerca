@@ -45,9 +45,9 @@ pub fn DoubleLinkedList(comptime K: type, comptime V: type) type {
             };
         }
 
-        pub fn push_front(self: *Self, value: *Node(K, V)) void {
+        pub fn push_front(self: *Self, value: *Node(K, V)) bool {
             if (self.front == value) {
-                return;
+                return false;
             }
 
             if (self.front == null) {
@@ -62,6 +62,7 @@ pub fn DoubleLinkedList(comptime K: type, comptime V: type) type {
             }
 
             self.size += 1;
+            return true;
         }
 
         pub fn push_back(self: *Self, value: *Node(K, V)) bool {
