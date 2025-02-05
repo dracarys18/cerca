@@ -1,4 +1,5 @@
 const std = @import("std");
+const assert = std.debug.assert;
 
 /// A single node of a queue
 pub fn Node(comptime K: type, comptime V: type) type {
@@ -13,6 +14,7 @@ pub fn Node(comptime K: type, comptime V: type) type {
 
         pub fn init(key: K, value: V, allocator: std.mem.Allocator) !*Self {
             var node = try allocator.create(Self);
+            errdefer _ = allocator.destroy(node);
 
             node.prev = null;
             node.next = null;
@@ -86,34 +88,8 @@ pub fn DoubleLinkedList(comptime K: type, comptime V: type) type {
         }
 
         pub fn moveToBack(self: *Self, node: *Node(K, V)) void {
-            // If the next is null node is already at the back
-            if (node.next == null) {
-                return;
-            }
-
-            // Queue has only one element
-            if (self.front == self.back) {
-                return;
-            }
-
-            // If the node is already in the back
-            if (self.back == node) {
-                return;
-            }
-
-            // If the node was intermediate of the queue
-            if (node.prev) |prev| {
-                prev.next = node.next;
-            } else {
-                // Node was in the front
-                self.front = node.next;
-            }
-
-            node.prev = self.back;
-            node.next = null;
-
-            self.back.?.next = node;
-            self.back = node;
+            self.remove(node);
+            _ = self.push_back(node);
         }
 
         pub fn remove(self: *Self, node: *Node(K, V)) void {
@@ -130,20 +106,18 @@ pub fn DoubleLinkedList(comptime K: type, comptime V: type) type {
                 self.back = node.prev;
             }
 
-            node.deinit();
             self.size -= 1;
         }
 
         pub fn clear(self: *Self) void {
             var front = self.front;
-            while (front) |node| {
-                const next = node.next;
-                node.deinit();
+            while (front) |fnl| {
+                const next = fnl.next;
+                fnl.deinit();
+
                 front = next;
+                self.size -= 1;
             }
-            self.front = null;
-            self.back = null;
-            self.size = 0;
             self.* = undefined;
         }
 

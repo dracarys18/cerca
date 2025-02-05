@@ -18,10 +18,7 @@ pub fn EvictionPolicy(comptime K: type, comptime V: type) type {
             switch (self) {
                 .LeastRecentlyUsed => {
                     if (queue.front) |front| {
-                        const key = front.key;
-                        queue.remove(front);
-
-                        return key;
+                        return front.key;
                     }
                     return null;
                 },

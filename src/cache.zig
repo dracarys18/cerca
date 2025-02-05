@@ -77,7 +77,7 @@ pub fn Cache(comptime K: type, comptime V: type) type {
             if (self.expiry.size > self.limit) {
                 const to_remove = self.eviction.evict(&self.expiry);
                 if (to_remove) |key_to_remove| {
-                    _ = self.inner.remove(key_to_remove);
+                    _ = self.remove(key_to_remove);
                 }
             }
 
@@ -92,11 +92,12 @@ pub fn Cache(comptime K: type, comptime V: type) type {
 
         /// Remove an element from the cache
         pub fn remove(self: *Self, key: K) bool {
-            const value = self.inner.get(key);
+            const value = self.inner.fetchRemove(key);
 
-            if (value) |node| {
-                self.expiry.remove(node);
-                return self.inner.remove(key);
+            if (value) |kv| {
+                self.expiry.remove(kv.value);
+                kv.value.deinit();
+                return true;
             } else {
                 return false;
             }
