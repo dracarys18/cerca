@@ -118,6 +118,7 @@ pub fn DoubleLinkedList(comptime K: type, comptime V: type) type {
                 front = next;
                 self.size -= 1;
             }
+            assert(self.size == 0);
             self.* = undefined;
         }
 

@@ -80,4 +80,16 @@ pub fn build(b: *std.Build) void {
     // running the unit tests.
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_lib_unit_tests.step);
+
+    const fmt_step = b.step("fmt", "Run formatting checks");
+    const fmt = b.addFmt(.{
+        .paths = &.{
+            "src",
+            "build.zig",
+        },
+        .check = true,
+    });
+
+    fmt_step.dependOn(&fmt.step);
+    b.default_step.dependOn(fmt_step);
 }
