@@ -87,3 +87,15 @@ test "Cache updates duplicate keys" {
     try testing.expect(!inserted); // Should return false for duplicate key
     try testing.expectEqual(@as(?i32, 20), cache.get(1)); // Value should be updated to 20
 }
+
+test "Test if TTL actually works" {
+    const eviction_policy = EvictionPolicy(i32, i32).LeastRecentlyUsed;
+    const builder = CacheBuilder(i32, i32).new(eviction_policy).with_limit(2).with_ttl(100);
+    var cache = builder.build(testing.allocator);
+    defer cache.deinit();
+    errdefer cache.deinit();
+    _ = try cache.insert(1, 10);
+
+    std.time.sleep(100 * std.time.ns_per_ms);
+    try testing.expectEqual(@as(?i32, null), cache.get(1));
+}

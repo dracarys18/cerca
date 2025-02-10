@@ -13,16 +13,24 @@ pub fn CacheBuilder(comptime K: type, comptime V: type) type {
         /// Sets the EvictionPolicy of the Cache
         eviction: EvictionPolicy(K, V),
 
+        /// TTL - Time to live for an object
+        ttl: ?i64,
+
         const Self = @This();
 
         /// Default Constructor for the CacheBuilder. Note that it's mandatory to choose eviction policy at this step
         pub fn new(eviction: EvictionPolicy(K, V)) Self {
-            return Self{ .limit = defaults.DEFAULT_MAX_CAPACITY, .eviction = eviction };
+            return Self{ .limit = defaults.DEFAULT_MAX_CAPACITY, .eviction = eviction, .ttl = null };
         }
 
         /// Sets the limit variable to passed limit. Otherwise the limit would be 100
         pub fn with_limit(self: Self, limit: usize) Self {
-            return Self{ .limit = limit, .eviction = self.eviction };
+            return Self{ .limit = limit, .eviction = self.eviction, .ttl = null };
+        }
+
+        /// Sets the TTL in milliseconds for the cache
+        pub fn with_ttl(self: Self, ttl: i64) Self {
+            return Self{ .limit = self.limit, .eviction = self.eviction, .ttl = ttl };
         }
 
         /// Builds a Cache(K,V)
@@ -44,11 +52,12 @@ pub fn Cache(comptime K: type, comptime V: type) type {
         allocator: std.mem.Allocator,
         eviction: EvictionPolicy(K, V),
         limit: usize,
+        ttl: ?i64,
 
         const Self = @This();
 
         fn initOptions(allocator: std.mem.Allocator, builder: CacheBuilder(K, V)) Self {
-            return Self{ .inner = std.AutoHashMap(K, *Node(K, V)).init(allocator), .expiry = DoubleLinkedList(K, V).empty(), .allocator = allocator, .limit = builder.limit, .eviction = builder.eviction };
+            return Self{ .inner = std.AutoHashMap(K, *Node(K, V)).init(allocator), .expiry = DoubleLinkedList(K, V).empty(), .allocator = allocator, .limit = builder.limit, .eviction = builder.eviction, .ttl = builder.ttl };
         }
 
         /// Releases all the memory allocated by `Cache`
@@ -87,6 +96,18 @@ pub fn Cache(comptime K: type, comptime V: type) type {
         /// Get an element from the cache
         pub fn get(self: *Self, key: K) ?V {
             const node = self.inner.get(key);
+
+            if (node) |node_nonull| {
+                if (self.ttl) |actual_ttl| {
+                    const now = std.time.milliTimestamp();
+
+                    if (now - node_nonull.inserted_at > actual_ttl) {
+                        _ = self.remove(key);
+                        return null;
+                    }
+                }
+            }
+
             return self.eviction.get(node, &self.expiry);
         }
 

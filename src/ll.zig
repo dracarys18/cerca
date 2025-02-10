@@ -8,6 +8,7 @@ pub fn Node(comptime K: type, comptime V: type) type {
 
         key: K,
         data: V,
+        inserted_at: i64,
         prev: ?*Self,
         next: ?*Self,
         allocator: std.mem.Allocator,
@@ -21,6 +22,7 @@ pub fn Node(comptime K: type, comptime V: type) type {
             node.key = key;
             node.data = value;
             node.allocator = allocator;
+            node.inserted_at = std.time.milliTimestamp();
 
             return node;
         }
