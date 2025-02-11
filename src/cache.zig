@@ -1,4 +1,5 @@
 const std = @import("std");
+const assert = std.debug.assert;
 const Node = @import("./ll.zig").Node;
 const DoubleLinkedList = @import("./ll.zig").DoubleLinkedList;
 const EvictionPolicy = @import("./ep.zig").EvictionPolicy;
@@ -84,10 +85,7 @@ pub fn Cache(comptime K: type, comptime V: type) type {
             }
 
             if (self.expiry.size > self.limit) {
-                const to_remove = self.eviction.evict(&self.expiry);
-                if (to_remove) |key_to_remove| {
-                    _ = self.remove(key_to_remove);
-                }
+                assert(self.eviction.evict(self));
             }
 
             return is_inserted;
@@ -102,7 +100,7 @@ pub fn Cache(comptime K: type, comptime V: type) type {
                     const now = std.time.milliTimestamp();
 
                     if (now - node_nonull.inserted_at > actual_ttl) {
-                        _ = self.remove(key);
+                        assert(self.remove(key));
                         return null;
                     }
                 }

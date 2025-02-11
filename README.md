@@ -1,7 +1,6 @@
 ## Supported Eviction Policies
 - [x] LRU
-- [] SIEVE
-- [] LFU
+- [x] SIEVE
 
 
 ## Roadmap

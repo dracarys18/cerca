@@ -12,6 +12,7 @@ pub fn Node(comptime K: type, comptime V: type) type {
         prev: ?*Self,
         next: ?*Self,
         allocator: std.mem.Allocator,
+        visited: bool,
 
         pub fn init(key: K, value: V, allocator: std.mem.Allocator) !*Self {
             var node = try allocator.create(Self);
@@ -23,12 +24,17 @@ pub fn Node(comptime K: type, comptime V: type) type {
             node.data = value;
             node.allocator = allocator;
             node.inserted_at = std.time.milliTimestamp();
+            node.visited = false;
 
             return node;
         }
 
         pub fn deinit(self: *Self) void {
             self.allocator.destroy(self);
+        }
+
+        pub fn set_visited(self: *Self, val: bool) void {
+            self.visited = val;
         }
     };
 }
@@ -39,12 +45,14 @@ pub fn DoubleLinkedList(comptime K: type, comptime V: type) type {
 
         front: ?*Node(K, V),
         back: ?*Node(K, V),
+        hand: ?*Node(K, V),
         size: usize,
 
         pub fn empty() Self {
             return Self{
                 .front = null,
                 .back = null,
+                .hand = null,
                 .size = 0,
             };
         }

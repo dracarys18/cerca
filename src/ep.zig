@@ -1,5 +1,7 @@
 const DoubleLinkedList = @import("././ll.zig").DoubleLinkedList;
 const Node = @import("././ll.zig").Node;
+const Cache = @import("./cache.zig").Cache;
+
 const std = @import("std");
 
 /// EvictionPolicy for `Cache`
@@ -14,16 +16,26 @@ pub fn EvictionPolicy(comptime K: type, comptime V: type) type {
 
         const Self = @This();
 
-        pub inline fn evict(self: Self, queue: *DoubleLinkedList(K, V)) ?K {
+        pub inline fn evict(self: Self, cache: *Cache(K, V)) bool {
             switch (self) {
                 .LeastRecentlyUsed => {
-                    if (queue.front) |front| {
-                        return front.key;
+                    if (cache.expiry.front) |front| {
+                        const to_remove = front.key;
+                        return cache.remove(to_remove);
                     }
-                    return null;
+                    return false;
                 },
                 .Sieve => {
-                    return null;
+                    var hand = cache.expiry.hand orelse cache.expiry.back;
+
+                    while (hand) |node| : (hand = node.prev orelse cache.expiry.back) {
+                        if (!node.visited) {
+                            cache.expiry.hand = node.prev;
+                            return cache.remove(node.key);
+                        }
+                        node.visited = false;
+                    }
+                    return false;
                 },
             }
         }
@@ -39,6 +51,10 @@ pub fn EvictionPolicy(comptime K: type, comptime V: type) type {
                     }
                 },
                 .Sieve => {
+                    if (node) |nonull_node| {
+                        nonull_node.set_visited(true);
+                        return nonull_node.data;
+                    }
                     return null;
                 },
             }
@@ -63,7 +79,23 @@ pub fn EvictionPolicy(comptime K: type, comptime V: type) type {
                         }
                     }
                 },
-                .Sieve => return null,
+                .Sieve => {
+                    if (node) |nonull_node| {
+                        nonull_node.data = value;
+                        nonull_node.visited = true;
+                        return null;
+                    } else {
+                        const new_node = try Node(K, V).init(key, value, allocator);
+                        const is_pushed = queue.push_front(new_node);
+
+                        if (is_pushed) {
+                            return new_node;
+                        } else {
+                            new_node.deinit();
+                            return null;
+                        }
+                    }
+                },
             }
         }
     };
