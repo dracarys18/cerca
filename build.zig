@@ -15,6 +15,18 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
+    // Declaring modules here
+
+    const ll = b.createModule(.{
+        .root_source_file = b.path("src/ll.zig"),
+    });
+    const defaults = b.createModule(.{
+        .root_source_file = b.path("src/defaults.zig"),
+    });
+
+    const ep_module = b.createModule(.{ .root_source_file = b.path("src/ep.zig"), .imports = &.{.{ .name = "ll", .module = ll }} });
+    const cache = b.createModule(.{ .root_source_file = b.path("src/cache.zig"), .imports = &.{ .{ .name = "ep", .module = ep_module }, .{ .name = "defaults", .module = defaults }, .{ .name = "ll", .module = ll } } });
+
     const lib = b.addStaticLibrary(.{
         .name = "cerca",
         // In this case the main source file is merely a path, however, in more
@@ -23,6 +35,11 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+
+    lib.root_module.addImport("ep", ep_module);
+    lib.root_module.addImport("ll", ll);
+    lib.root_module.addImport("defaults", defaults);
+    lib.root_module.addImport("cache", cache);
 
     // This declares intent for the library to be installed into the standard
     // location when the user invokes the "install" step (the default step when
@@ -66,20 +83,37 @@ pub fn build(b: *std.Build) void {
 
     // Creates a step for unit testing. This only builds the test executable
     // but does not run it.
-    const lib_unit_tests = b.addTest(.{
-        .name = "cache_tests",
-        .root_source_file = b.path("src/cerca.zig"),
+    const lru_tests = b.addTest(.{
+        .name = "lru_tests",
+        .root_source_file = b.path("src/tests/lru.zig"),
         .target = target,
         .optimize = optimize,
     });
+    lru_tests.root_module.addImport("ep", ep_module);
+    lru_tests.root_module.addImport("ll", ll);
+    lru_tests.root_module.addImport("defaults", defaults);
+    lru_tests.root_module.addImport("cache", cache);
 
-    const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);
+    const sieve_tests = b.addTest(.{
+        .name = "sieve_tests",
+        .root_source_file = b.path("src/tests/sieve.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    sieve_tests.root_module.addImport("ep", ep_module);
+    sieve_tests.root_module.addImport("ll", ll);
+    sieve_tests.root_module.addImport("defaults", defaults);
+    sieve_tests.root_module.addImport("cache", cache);
+
+    const lru_run_tests = b.addRunArtifact(lru_tests);
+    const sieve_run_tests = b.addRunArtifact(sieve_tests);
 
     // Similar to creating the run step earlier, this exposes a `test` step to
     // the `zig build --help` menu, providing a way for the user to request
     // running the unit tests.
     const test_step = b.step("test", "Run unit tests");
-    test_step.dependOn(&run_lib_unit_tests.step);
+    test_step.dependOn(&lru_run_tests.step);
+    test_step.dependOn(&sieve_run_tests.step);
 
     const fmt_step = b.step("fmt", "Run formatting checks");
     const fmt = b.addFmt(.{

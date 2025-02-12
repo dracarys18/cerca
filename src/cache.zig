@@ -1,9 +1,9 @@
 const std = @import("std");
 const assert = std.debug.assert;
-const Node = @import("./ll.zig").Node;
-const DoubleLinkedList = @import("./ll.zig").DoubleLinkedList;
-const EvictionPolicy = @import("./ep.zig").EvictionPolicy;
-const defaults = @import("./defaults.zig");
+const Node = @import("ll").Node;
+const DoubleLinkedList = @import("ll").DoubleLinkedList;
+const EvictionPolicy = @import("ep").EvictionPolicy;
+const defaults = @import("defaults");
 
 /// Builder for the Cache. With toggles for various features.
 pub fn CacheBuilder(comptime K: type, comptime V: type) type {
@@ -85,7 +85,11 @@ pub fn Cache(comptime K: type, comptime V: type) type {
             }
 
             if (self.expiry.size > self.limit) {
-                assert(self.eviction.evict(self));
+                const key_evict = self.eviction.evict(&self.expiry);
+
+                if (key_evict) |evict| {
+                    assert(self.remove(evict));
+                }
             }
 
             return is_inserted;

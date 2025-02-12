@@ -1,6 +1,5 @@
-const DoubleLinkedList = @import("././ll.zig").DoubleLinkedList;
-const Node = @import("././ll.zig").Node;
-const Cache = @import("./cache.zig").Cache;
+const DoubleLinkedList = @import("ll").DoubleLinkedList;
+const Node = @import("ll").Node;
 
 const std = @import("std");
 
@@ -8,7 +7,7 @@ const std = @import("std");
 ///
 /// Currently supported Cache eviction algorithms are
 /// - LRU
-/// - SIEVE (TODO)
+/// - SIEVE
 pub fn EvictionPolicy(comptime K: type, comptime V: type) type {
     return enum {
         LeastRecentlyUsed,
@@ -16,26 +15,25 @@ pub fn EvictionPolicy(comptime K: type, comptime V: type) type {
 
         const Self = @This();
 
-        pub inline fn evict(self: Self, cache: *Cache(K, V)) bool {
+        pub inline fn evict(self: Self, ll: *DoubleLinkedList(K, V)) ?K {
             switch (self) {
                 .LeastRecentlyUsed => {
-                    if (cache.expiry.front) |front| {
-                        const to_remove = front.key;
-                        return cache.remove(to_remove);
+                    if (ll.front) |front| {
+                        return front.key;
                     }
-                    return false;
+                    return null;
                 },
                 .Sieve => {
-                    var hand = cache.expiry.hand orelse cache.expiry.back;
+                    var hand = ll.hand orelse ll.back;
 
-                    while (hand) |node| : (hand = node.prev orelse cache.expiry.back) {
+                    while (hand) |node| : (hand = node.prev orelse ll.back) {
                         if (!node.visited) {
-                            cache.expiry.hand = node.prev;
-                            return cache.remove(node.key);
+                            ll.hand = node.prev;
+                            return node.key;
                         }
                         node.visited = false;
                     }
-                    return false;
+                    return null;
                 },
             }
         }
