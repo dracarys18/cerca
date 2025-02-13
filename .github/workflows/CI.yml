@@ -1,0 +1,24 @@
+name: CI-Push
+on: push
+
+jobs:
+  fmt:
+    name: Check if the code is formatted
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Set up zig
+        uses: goto-bus-stop/setup-zig@v2
+      - name: Run fmt
+        run: zig build fmt
+  tests:
+    name: Check if the unit tests are passing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Set up zig
+        uses: goto-bus-stop/setup-zig@v2
+      - name: Run unit tests
+        run: zig build test --color on --summary all

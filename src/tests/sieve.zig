@@ -90,7 +90,7 @@ test "Cache updates duplicate keys (Sieve)" {
 
 test "Test if TTL actually works (Sieve)" {
     const eviction_policy = EvictionPolicy(i32, i32).Sieve;
-    const builder = CacheBuilder(i32, i32).new(eviction_policy).with_limit(2).with_ttl(100);
+    const builder = CacheBuilder(i32, i32).new(eviction_policy).with_limit(2).with_ttl(10);
     var cache = builder.build(testing.allocator);
     defer cache.deinit();
     errdefer cache.deinit();
