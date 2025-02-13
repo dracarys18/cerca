@@ -33,11 +33,11 @@ pub fn EvictionPolicy(comptime K: type, comptime V: type) type {
                 // is evicted and the prev to the node which is evicted is marked as `hand` from which the next eviction starts.
                 // All the subsequent elements where visited = true from back to the hand will be demoted. Which is called quick demotion
                 .Sieve => {
-                    var hand = ll.hand orelse ll.back;
+                    var hand = ll.cursor orelse ll.back;
 
                     while (hand) |node| : (hand = node.prev orelse ll.back) {
                         if (!node.visited) {
-                            ll.hand = node.prev;
+                            ll.cursor = node.prev;
                             return node.key;
                         }
                         node.visited = false;

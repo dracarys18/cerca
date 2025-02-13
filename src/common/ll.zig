@@ -1,43 +1,6 @@
 const std = @import("std");
 const assert = std.debug.assert;
-
-/// A single node of a queue
-pub fn Node(comptime K: type, comptime V: type) type {
-    return struct {
-        const Self = @This();
-
-        key: K,
-        data: V,
-        inserted_at: i64,
-        prev: ?*Self,
-        next: ?*Self,
-        allocator: std.mem.Allocator,
-        visited: bool,
-
-        pub fn init(key: K, value: V, allocator: std.mem.Allocator) !*Self {
-            var node = try allocator.create(Self);
-            errdefer _ = allocator.destroy(node);
-
-            node.prev = null;
-            node.next = null;
-            node.key = key;
-            node.data = value;
-            node.allocator = allocator;
-            node.inserted_at = std.time.milliTimestamp();
-            node.visited = false;
-
-            return node;
-        }
-
-        pub fn deinit(self: *Self) void {
-            self.allocator.destroy(self);
-        }
-
-        pub fn set_visited(self: *Self, val: bool) void {
-            self.visited = val;
-        }
-    };
-}
+pub const Node = @import("./node.zig").Node;
 
 pub fn DoubleLinkedList(comptime K: type, comptime V: type) type {
     return struct {
@@ -45,14 +8,14 @@ pub fn DoubleLinkedList(comptime K: type, comptime V: type) type {
 
         front: ?*Node(K, V),
         back: ?*Node(K, V),
-        hand: ?*Node(K, V),
+        cursor: ?*Node(K, V),
         size: usize,
 
         pub fn empty() Self {
             return Self{
                 .front = null,
                 .back = null,
-                .hand = null,
+                .cursor = null,
                 .size = 0,
             };
         }

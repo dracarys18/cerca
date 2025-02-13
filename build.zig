@@ -18,7 +18,7 @@ pub fn build(b: *std.Build) void {
     // Declaring modules here
 
     const ll = b.createModule(.{
-        .root_source_file = b.path("src/ll.zig"),
+        .root_source_file = b.path("src/common/ll.zig"),
     });
     const defaults = b.createModule(.{
         .root_source_file = b.path("src/defaults.zig"),
