@@ -24,8 +24,10 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/defaults.zig"),
     });
 
+    const notifier = b.createModule(.{ .root_source_file = b.path("src/notifier.zig") });
+
     const ep_module = b.createModule(.{ .root_source_file = b.path("src/ep.zig"), .imports = &.{.{ .name = "ll", .module = ll }} });
-    const cache = b.createModule(.{ .root_source_file = b.path("src/cache.zig"), .imports = &.{ .{ .name = "ep", .module = ep_module }, .{ .name = "defaults", .module = defaults }, .{ .name = "ll", .module = ll } } });
+    const cache = b.createModule(.{ .root_source_file = b.path("src/cache.zig"), .imports = &.{ .{ .name = "ep", .module = ep_module }, .{ .name = "defaults", .module = defaults }, .{ .name = "ll", .module = ll }, .{ .name = "notify", .module = notifier } } });
 
     const lib = b.addStaticLibrary(.{
         .name = "cerca",
