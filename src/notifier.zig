@@ -1,16 +1,12 @@
-pub fn Listener(comptime K: type, comptime V: type) type {
-    return fn (key: K, value: V) void;
-}
-
 pub fn Notifier(comptime K: type, comptime V: type) type {
     return struct {
         const Self = @This();
 
         /// Listener function which is passsed by the user
-        listener: Listener(K, V),
+        listener: *const fn (key: K, value: V) void,
 
         /// Initialise the Listener with listener function
-        pub fn init(listener: Listener(K, V)) Self {
+        pub fn init(listener: fn (key: K, value: V) void) Self {
             return Self{ .listener = listener };
         }
 

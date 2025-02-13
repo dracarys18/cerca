@@ -107,8 +107,18 @@ pub fn build(b: *std.Build) void {
     sieve_tests.root_module.addImport("defaults", defaults);
     sieve_tests.root_module.addImport("cache", cache);
 
+    const generic_tests = b.addTest(.{
+        .name = "generic_tests",
+        .root_source_file = b.path("src/tests/generic.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    generic_tests.root_module.addImport("cache", cache);
+    generic_tests.root_module.addImport("ep", ep_module);
+
     const lru_run_tests = b.addRunArtifact(lru_tests);
     const sieve_run_tests = b.addRunArtifact(sieve_tests);
+    const generic_run_tests = b.addRunArtifact(generic_tests);
 
     // Similar to creating the run step earlier, this exposes a `test` step to
     // the `zig build --help` menu, providing a way for the user to request
@@ -116,6 +126,7 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&lru_run_tests.step);
     test_step.dependOn(&sieve_run_tests.step);
+    test_step.dependOn(&generic_run_tests.step);
 
     const fmt_step = b.step("fmt", "Run formatting checks");
     const fmt = b.addFmt(.{

@@ -4,7 +4,6 @@ const Node = @import("ll").Node;
 const DoubleLinkedList = @import("ll").DoubleLinkedList;
 const EvictionPolicy = @import("ep").EvictionPolicy;
 const Notifier = @import("notify").Notifier;
-const Listener = @import("notify").Listener;
 const defaults = @import("defaults");
 
 /// Builder for the Cache. With toggles for various features.
@@ -20,7 +19,7 @@ pub fn CacheBuilder(comptime K: type, comptime V: type) type {
         ttl: ?i64,
 
         /// Listener function to execute when the key is evicted
-        listener: ?Listener(K, V),
+        listener: ?fn (key: K, value: V) void,
 
         const Self = @This();
 
@@ -40,7 +39,7 @@ pub fn CacheBuilder(comptime K: type, comptime V: type) type {
         }
 
         /// Executes the passed function on every eviction
-        pub fn with_eviction_listener(self: Self, listener: Listener) Self {
+        pub fn with_eviction_listener(self: Self, listener: fn (key: K, value: V) void) Self {
             return Self{ .limit = self.limit, .eviction = self.eviction, .ttl = self.ttl, .listener = listener };
         }
 
@@ -62,14 +61,14 @@ pub fn Cache(comptime K: type, comptime V: type) type {
         expiry: DoubleLinkedList(K, V),
         allocator: std.mem.Allocator,
         eviction: EvictionPolicy(K, V),
-        comptime notifier: ?Notifier(K, V) = null,
+        notifier: ?Notifier(K, V),
         limit: usize,
         ttl: ?i64,
 
         const Self = @This();
 
         fn initOptions(allocator: std.mem.Allocator, builder: CacheBuilder(K, V)) Self {
-            return Self{ .inner = std.AutoHashMap(K, *Node(K, V)).init(allocator), .expiry = DoubleLinkedList(K, V).empty(), .allocator = allocator, .limit = builder.limit, .eviction = builder.eviction, .ttl = builder.ttl, .notifier = if (builder.listener) |listener| Notifier.init(listener) else null };
+            return Self{ .inner = std.AutoHashMap(K, *Node(K, V)).init(allocator), .expiry = DoubleLinkedList(K, V).empty(), .allocator = allocator, .limit = builder.limit, .eviction = builder.eviction, .ttl = builder.ttl, .notifier = if (builder.listener) |listener| Notifier(K, V).init(listener) else null };
         }
 
         /// Releases all the memory allocated by `Cache`
