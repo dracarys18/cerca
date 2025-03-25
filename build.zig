@@ -20,6 +20,9 @@ pub fn build(b: *std.Build) void {
     const ll = b.createModule(.{
         .root_source_file = b.path("src/common/ll.zig"),
     });
+
+    const chashmap = b.createModule(.{ .root_source_file = b.path("src/common/chashmap/chashmap.zig") });
+
     const defaults = b.createModule(.{
         .root_source_file = b.path("src/defaults.zig"),
     });
@@ -27,7 +30,7 @@ pub fn build(b: *std.Build) void {
     const notifier = b.createModule(.{ .root_source_file = b.path("src/notifier.zig") });
 
     const ep_module = b.createModule(.{ .root_source_file = b.path("src/ep.zig"), .imports = &.{.{ .name = "ll", .module = ll }} });
-    const cache = b.createModule(.{ .root_source_file = b.path("src/cache.zig"), .imports = &.{ .{ .name = "ep", .module = ep_module }, .{ .name = "defaults", .module = defaults }, .{ .name = "ll", .module = ll }, .{ .name = "notify", .module = notifier } } });
+    const cache = b.createModule(.{ .root_source_file = b.path("src/cache.zig"), .imports = &.{ .{ .name = "ep", .module = ep_module }, .{ .name = "defaults", .module = defaults }, .{ .name = "ll", .module = ll }, .{ .name = "notify", .module = notifier }, .{ .name = "chashmap", .module = chashmap } } });
 
     const lib = b.addStaticLibrary(.{
         .name = "cerca",
@@ -116,9 +119,11 @@ pub fn build(b: *std.Build) void {
     generic_tests.root_module.addImport("cache", cache);
     generic_tests.root_module.addImport("ep", ep_module);
 
+    const chashmap_tests = b.addTest(.{ .name = "chashmap_tests", .root_source_file = b.path("src/common/chashmap/chashmap.zig"), .target = target, .optimize = optimize });
     const lru_run_tests = b.addRunArtifact(lru_tests);
     const sieve_run_tests = b.addRunArtifact(sieve_tests);
     const generic_run_tests = b.addRunArtifact(generic_tests);
+    const chashmap_run_tests = b.addRunArtifact(chashmap_tests);
 
     // Similar to creating the run step earlier, this exposes a `test` step to
     // the `zig build --help` menu, providing a way for the user to request
@@ -127,6 +132,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&lru_run_tests.step);
     test_step.dependOn(&sieve_run_tests.step);
     test_step.dependOn(&generic_run_tests.step);
+    test_step.dependOn(&chashmap_run_tests.step);
 
     const fmt_step = b.step("fmt", "Run formatting checks");
     const fmt = b.addFmt(.{

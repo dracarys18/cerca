@@ -5,6 +5,7 @@ const DoubleLinkedList = @import("ll").DoubleLinkedList;
 const EvictionPolicy = @import("ep").EvictionPolicy;
 const Notifier = @import("notify").Notifier;
 const defaults = @import("defaults");
+const map = @import("chashmap");
 
 /// Builder for the Cache. With toggles for various features.
 pub fn CacheBuilder(comptime K: type, comptime V: type) type {
@@ -57,7 +58,7 @@ pub fn CacheBuilder(comptime K: type, comptime V: type) type {
 /// - SIEVE (TODO)
 pub fn Cache(comptime K: type, comptime V: type) type {
     return struct {
-        inner: std.AutoHashMap(K, *Node(K, V)),
+        inner: map.ChashMap(K, *Node(K, V)),
         expiry: DoubleLinkedList(K, V),
         allocator: std.mem.Allocator,
         eviction: EvictionPolicy(K, V),
@@ -68,7 +69,7 @@ pub fn Cache(comptime K: type, comptime V: type) type {
         const Self = @This();
 
         fn initOptions(allocator: std.mem.Allocator, builder: CacheBuilder(K, V)) Self {
-            return Self{ .inner = std.AutoHashMap(K, *Node(K, V)).init(allocator), .expiry = DoubleLinkedList(K, V).empty(), .allocator = allocator, .limit = builder.limit, .eviction = builder.eviction, .ttl = builder.ttl, .notifier = if (builder.listener) |listener| Notifier(K, V).init(listener) else null };
+            return Self{ .inner = map.ChashMap(K, *Node(K, V)).init(allocator), .expiry = DoubleLinkedList(K, V).empty(), .allocator = allocator, .limit = builder.limit, .eviction = builder.eviction, .ttl = builder.ttl, .notifier = if (builder.listener) |listener| Notifier(K, V).init(listener) else null };
         }
 
         /// Releases all the memory allocated by `Cache`
